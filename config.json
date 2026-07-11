@@ -1,0 +1,9 @@
+{
+    "host": "0.0.0.0",
+    "port": 4444,
+    "web_port": 8080,
+    "database_path": "c2.db",
+    "jwt_secret": "lazyframework-secret-key-2024",
+    "ngrok_host": "0.tcp.ap.ngrok.io",
+    "ngrok_port": 19470
+}

